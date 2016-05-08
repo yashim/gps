@@ -136,13 +136,14 @@ class AlgorithmBADMM(Algorithm):
                 # Compute actions along this trajectory.
                 prc[:, t, :, :] = np.tile(traj.inv_pol_covar[t, :, :],
                                           [N, 1, 1])
+                lambda_K_div = pol_info.lambda_K[t, :, :] / pol_info.pol_wt[t]
+                lambda_k_div = pol_info.lambda_k[t, :] / pol_info.pol_wt[t]
                 for i in range(N):
                     mu[i, t, :] = \
                             (traj.K[t, :, :].dot(X[i, t, :]) + traj.k[t, :]) - \
                             np.linalg.solve(
-                                prc[i, t, :, :],  #TODO: Divide by pol_wt[t].
-                                pol_info.lambda_K[t, :, :].dot(X[i, t, :]) + \
-                                        pol_info.lambda_k[t, :]
+                                prc[i, t, :, :],
+                                lambda_K_div.dot(X[i, t, :]) + lambda_k_div
                             )
                 wt[:, t].fill(pol_info.pol_wt[t])
             tgt_mu = np.concatenate((tgt_mu, mu))
