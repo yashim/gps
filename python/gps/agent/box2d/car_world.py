@@ -150,14 +150,19 @@ class TDCar(object):
                     ]
 
     def __init__(self, world, vertices=None,
-                 tire_anchors=None, density=0.1, position=(0, 0),
+                 tire_anchors=None, density=0.1, position=(0, 0), angle=0,
                  **tire_kws):
         if vertices is None:
             vertices = TDCar.vertices
 
+        self.world = world
         self.body = world.CreateDynamicBody(position=position)
         self.body.CreatePolygonFixture(vertices=vertices, density=density)
         self.body.userData = {'obj': self}
+        self.body.angle = angle
+
+        # self.position = position
+        # self.linearVelocity = self.body.linearVelocity
 
         self.tires = [TDTire(self, **tire_kws) for i in range(4)]
 
@@ -195,19 +200,11 @@ class TDCar(object):
         turn_per_timestep = turn_speed_per_sec / hz
         desired_angle = 0.0
 
-        # steering = keys['steering']
-        # throttle = keys['throttle']
-
         if angle > lock_angle:
             angle = lock_angle
 
         if angle < -lock_angle:
             angle = -lock_angle
-
-        # if 'left' in keys:
-        #     desired_angle = lock_angle
-        # elif 'right' in keys:
-        #     desired_angle = -lock_angle
 
         desired_angle = angle
 
@@ -226,119 +223,14 @@ class TDCar(object):
         front_left_joint.SetLimits(new_angle, new_angle)
         front_right_joint.SetLimits(new_angle, new_angle)
 
+    def destroy(self):
+        for tire in self.tires:
+            self.world.DestroyBody(tire.body)
+            tire = None
 
-# def create_car(world, offset, wheel_radius, density=1.0,
-#                scale=(1.0, 1.0), chassis_vertices=None):
-#     """ create Box2D car"""
-#     x_offset, y_offset = offset
-#     scale_x, scale_y = scale
-#     if chassis_vertices is None:
-#         chassis_vertices = [
-#             (1.5, 0),
-#             (3, 2.5),
-#             (2.8, 5.5),
-#             (1, 10),
-#             (-1, 10),
-#             (-2.8, 5.5),
-#             (-3, 2.5),
-#             (-1.5, 0)
-#         ]
-
-#     wheel_vertices = [
-#         (0.1, 0.2),
-#         (-0.1, 0.2),
-#         (-0.1, -0.2),
-#         (0.1, -0.2),
-#     ]
-
-#     chassis_vertices = [(scale_x * x, scale_y * y)
-#                         for x, y in chassis_vertices]
-#     radius_scale = sqrt(scale_x ** 2 + scale_y ** 2)
-#     wheel_radius *= radius_scale
-
-#     chassis = world.CreateDynamicBody(
-#         position=(x_offset, y_offset),
-#         fixtures=b2FixtureDef(
-#             shape=b2PolygonShape(vertices=chassis_vertices),
-#             density=density,
-#         )
-#     )
-
-#     wheel_shape = b2.b2PolygonShape()
-#     wheel_shape.SetAsBox(0.5, 1.25)
-
-#     left_front_wheel = world.CreateDynamicBody(
-#         fixtures=b2FixtureDef(
-#             shape=wheel_shape,
-#             density=density,
-#         )
-#     )
-
-#     right_front_wheel = world.CreateDynamicBody(
-#         fixtures=b2FixtureDef(
-#             shape=wheel_shape,
-#             density=density,
-#         )
-#     )
-
-#     left_rear_wheel = world.CreateDynamicBody(
-#         fixtures=b2FixtureDef(
-#             shape=wheel_shape,
-#             density=density,
-#         )
-#     )
-
-#     right_rear_wheel = world.CreateDynamicBody(
-#         fixtures=b2FixtureDef(
-#             shape=wheel_shape,
-#             density=density,
-#         )
-#     )
-
-#     left_front_joint = world.CreateRevoluteJoint(
-#         bodyA=chassis,
-#         bodyB=left_front_wheel,
-#         localAnchorA=(-3, 8.5),
-#         localAnchorB=(0, 0),
-#         enableLimit=True,
-#         lowerAngle = 0,
-#         upperAngle = 0,
-#     )
-
-#     right_front_joint = world.CreateRevoluteJoint(
-#         bodyA=chassis,
-#         bodyB=right_front_wheel,
-#         localAnchorA=(3, 8.5),
-#         localAnchorB=(0, 0),
-#         enableLimit=True,
-#         lowerAngle = 0,
-#         upperAngle = 0,
-#     )
-
-#     left_rear_joint = world.CreateRevoluteJoint(
-#         bodyA=chassis,
-#         bodyB=left_rear_wheel,
-#         localAnchorA=(-3, 0.75),
-#         localAnchorB=(0, 0),
-#         enableLimit=True,
-#         lowerAngle = 0,
-#         upperAngle = 0,
-#     )
-
-#     right_rear_joint = world.CreateRevoluteJoint(
-#         bodyA=chassis,
-#         bodyB=right_rear_wheel,
-#         localAnchorA=(3, 0.75),
-#         localAnchorB=(0, 0),
-#         enableLimit=True,
-#         lowerAngle = 0,
-#         upperAngle = 0,
-#     )
-
-#     return chassis
+        self.world.DestroyBody(self.body)
 
 class CarWorld(Framework):
-    """ This class defines the point mass and its environment."""
     name = "Car"
 
     def __init__(self, x0, target, render):
@@ -347,11 +239,10 @@ class CarWorld(Framework):
             super(CarWorld, self).__init__()
         else:
             self.world = b2.b2World(gravity=(0, 0), doSleep=True)
+
         self.world.gravity = (0.0, 0.0)
         self.initial_position = (x0[0], x0[1])
-        self.initial_angle = b2.b2_pi / 4
-        self.initial_linear_velocity = (x0[2], x0[3])
-        self.initial_angular_velocity = 0
+        self.initial_angle = 0
 
         ground = self.world.CreateBody(position=(0, 20))
         ground.CreateEdgeChain(
@@ -370,26 +261,7 @@ class CarWorld(Framework):
         xf2.angle = -0.3524 * b2.b2_pi
         xf2.position = b2.b2Mul(xf2.R, (-1.0, 0.0))
 
-        # car = create_car(self.world, offset=(0.0, 1.0), wheel_radius=0.1, scale=(1, 1))
-        # self.car = car
-
-        # self.car = self.world.CreateDynamicBody(
-        #     position=self.initial_position,
-        #     angle=self.initial_angle,
-        #     linearVelocity=self.initial_linear_velocity,
-        #     angularVelocity=self.initial_angular_velocity,
-        #     angularDamping=5,
-        #     linearDamping=0.1,
-        #     shapes=[b2.b2PolygonShape(vertices=[xf1*(-1, 0),
-        #                                         xf1*(1, 0), xf1*(0, .5)]),
-        #             b2.b2PolygonShape(vertices=[xf2*(-1, 0),
-        #                                         xf2*(1, 0), xf2*(0, .5)])],
-        #     shapeFixture=b2.b2FixtureDef(density=1.0),
-        # )
-
-        self.car = TDCar(self.world)
-
-
+        self.car = TDCar(self.world, position=self.initial_position, angle=self.initial_angle)
 
         self.target = self.world.CreateStaticBody(
             position=target[:2],
@@ -400,6 +272,17 @@ class CarWorld(Framework):
                                                 xf2*(0, .5)])],
         )
         self.target.active = False
+
+
+        self.start = self.world.CreateStaticBody(
+            position=self.initial_position,
+            angle=self.initial_angle,
+            shapes=[b2.b2PolygonShape(vertices=[xf1*(-1, 0), xf1*(1, 0),
+                                                xf1*(0, .5)]),
+                    b2.b2PolygonShape(vertices=[xf2*(-1, 0), xf2*(1, 0),
+                                                xf2*(0, .5)])],
+        )
+        self.start.active = False
 
     def run(self):
         """Initiates the first time step
@@ -421,31 +304,30 @@ class CarWorld(Framework):
 
     def Step(self, settings, action):
         """Called upon every step. """
-        # a = self.car.angle
-        # vel_x = cos(a) * 0 + sin(a) * action[0]
-        # vel_y = -sin(a) * 0 + cos(a) * action[0]
-        # self.car.linearVelocity = (vel_x, vel_y)#(0,0)
-        # print self.car.linearVelocity, self.car.angle
-        # print self.car.GetLocalPoint((0, 1))
-        # vec = self.car.GetWorldPoint((action[0], 0))
-        # vec.Normalize()
-        
-        # self.car.linearVelocity = (0,0)
-        # self.car.angularVelocity = action[1]
         self.car.update(action[1], action[0], 60)
+        # self.car.body.linearVelocity = (action[0], action[1])
+        # print self.car.position
         super(CarWorld, self).Step(settings)
 
     def reset_world(self):
         """ This resets the world to its initial state"""
         self.world.ClearForces()
-        self.car.position = self.initial_position
-        self.car.angle = self.initial_angle
-        self.car.angularVelocity = self.initial_angular_velocity
-        self.car.linearVelocity = self.initial_linear_velocity
+        self.car.body.position = self.initial_position
+        self.car.body.angle = self.initial_angle
+
+        # self.car.update(0, 0, 60)
+
+        # print self.car.body.position
+
+        self.car.destroy()
+        self.car = TDCar(self.world, position=self.initial_position, angle=self.initial_angle)
+
+        # self.car.body.angularVelocity = self.initial_angular_velocity
+        # self.car.body.linearVelocity = self.initial_linear_velocity
 
     def get_state(self):
         """ This retrieves the state of the point mass"""
-        state = {END_EFFECTOR_POINTS: np.append(np.array(self.car.position), [0]),
-                 END_EFFECTOR_POINT_VELOCITIES: np.append(np.array(self.car.linearVelocity), [0])}
+        state = {END_EFFECTOR_POINTS: np.append(np.array(self.car.body.position), [0]),
+                 END_EFFECTOR_POINT_VELOCITIES: np.append(np.array(self.car.body.linearVelocity), [0])}
 
         return state
