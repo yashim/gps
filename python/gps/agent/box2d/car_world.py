@@ -5,7 +5,8 @@ import Box2D as b2
 from Box2D import (b2CircleShape, b2EdgeShape, b2FixtureDef, b2PolygonShape, b2_pi)
 # from Box2D import *
 from framework import Framework
-from math import sqrt, cos, sin
+# from math import sqrt, cos, sin
+import math
 from gps.agent.box2d.settings import fwSettings
 from gps.proto.gps_pb2 import END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES
 
@@ -73,13 +74,15 @@ class TDTire(object):
         self.body.ApplyForce(self.current_traction * drag_force_magnitude * current_forward_normal,
                              self.body.worldCenter, True)
 
-    def update_drive(self, keys):
-        if 'up' in keys:
-            desired_speed = self.max_forward_speed
-        elif 'down' in keys:
-            desired_speed = self.max_backward_speed
-        else:
-            return
+    def update_drive(self, speed):
+        # if 'up' in keys:
+        #     desired_speed = self.max_forward_speed
+        # elif 'down' in keys:
+        #     desired_speed = self.max_backward_speed
+        # else:
+        #     return
+
+        desired_speed = speed
 
         # find the current speed in the forward direction
         current_forward_normal = self.body.GetWorldVector((0, 1))
@@ -178,12 +181,12 @@ class TDCar(object):
             tire.body.position = self.body.worldCenter + anchor
             joints.append(j)
 
-    def update(self, keys, hz):
+    def update(self, angle, speed, hz):
         for tire in self.tires:
             tire.update_friction()
 
         for tire in self.tires:
-            tire.update_drive(keys)
+            tire.update_drive(speed)
 
         # control steering
         lock_angle = math.radians(40.)
@@ -192,10 +195,21 @@ class TDCar(object):
         turn_per_timestep = turn_speed_per_sec / hz
         desired_angle = 0.0
 
-        if 'left' in keys:
-            desired_angle = lock_angle
-        elif 'right' in keys:
-            desired_angle = -lock_angle
+        # steering = keys['steering']
+        # throttle = keys['throttle']
+
+        if angle > lock_angle:
+            angle = lock_angle
+
+        if angle < -lock_angle:
+            angle = -lock_angle
+
+        # if 'left' in keys:
+        #     desired_angle = lock_angle
+        # elif 'right' in keys:
+        #     desired_angle = -lock_angle
+
+        desired_angle = angle
 
         front_left_joint, front_right_joint = self.joints[2:4]
         angle_now = front_left_joint.angle
@@ -416,8 +430,9 @@ class CarWorld(Framework):
         # vec = self.car.GetWorldPoint((action[0], 0))
         # vec.Normalize()
         
-        self.car.linearVelocity = (0,0)
+        # self.car.linearVelocity = (0,0)
         # self.car.angularVelocity = action[1]
+        self.car.update(action[1], action[0], 60)
         super(CarWorld, self).Step(settings)
 
     def reset_world(self):
