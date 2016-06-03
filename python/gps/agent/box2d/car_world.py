@@ -25,7 +25,7 @@ class TDTire(object):
     def __init__(self, car, max_forward_speed=100.0,
                  max_backward_speed=-20, max_drive_force=150,
                  turn_torque=15, max_lateral_impulse=3,
-                 dimensions=(0.5, 1.25), density=1.0,
+                 dimensions=(0.25, 0.6), density=1.0,
                  position=(0, 0)):
 
         world = car.body.world
@@ -133,20 +133,20 @@ class TDTire(object):
 
 
 class TDCar(object):
-    vertices = [(1.5, 0.0),
-                (3.0, 2.5),
-                (2.8, 5.5),
-                (1.0, 10.0),
-                (-1.0, 10.0),
-                (-2.8, 5.5),
-                (-3.0, 2.5),
-                (-1.5, 0.0),
+    vertices = [(0.75, 0.0),
+                (1.5, 1.25),
+                (1.4, 2.75),
+                (0.5, 5.0),
+                (-0.5, 5.0),
+                (-1.4, 2.75),
+                (-1.5, 1.25),
+                (-0.75, 0.0),
                 ]
 
-    tire_anchors = [(-3.0, 0.75),
-                    (3.0, 0.75),
-                    (-3.0, 8.50),
-                    (3.0, 8.50),
+    tire_anchors = [(-1.5, 0.37),
+                    (1.5, 0.37),
+                    (-1.5, 4.25),
+                    (1.5, 4.25),
                     ]
 
     def __init__(self, world, vertices=None,
@@ -246,13 +246,17 @@ class CarWorld(Framework):
 
         ground = self.world.CreateBody(position=(0, 20))
         ground.CreateEdgeChain(
-            [(-20, -20),
-             (-20, 20),
-             (20, 20),
-             (20, -20),
-             (-20, -20)]
+            [(-10, -30),
+             (-10, 5),
+             (-30, 30),]
             )
-
+	    
+        ground.CreateEdgeChain(
+            [(10, -30),
+             (10, 5),
+             (-10, 30),]
+            )
+	    
         xf1 = b2.b2Transform()
         xf1.angle = 0.3524 * b2.b2_pi
         xf1.position = b2.b2Mul(xf1.R, (1.0, 0.0))
@@ -298,7 +302,7 @@ class CarWorld(Framework):
             super(CarWorld, self).run_next(action)
         else:
             if action is not None:
-                self.car.linearVelocity = (0,0)# (action[0], action[1])
+                self.car.update(action[1], action[0], fwSettings.hz)
             self.world.Step(1.0 / fwSettings.hz, fwSettings.velocityIterations,
                             fwSettings.positionIterations)
 

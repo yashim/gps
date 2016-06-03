@@ -29,7 +29,7 @@ BASE_DIR = '/'.join(str.split(gps_filepath, '/')[:-2])
 EXP_DIR = BASE_DIR + '/../experiments/box2d_car_example/'
 
 common = {
-    'experiment_name': 'box2d_pointmass_example' + '_' + \
+    'experiment_name': 'box2d_car_example' + '_' + \
             datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
     'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
@@ -43,7 +43,7 @@ if not os.path.exists(common['data_files_dir']):
 
 agent = {
     'type': AgentBox2D,
-    'target_state' : np.array([5, 20, 0]),
+    'target_state' : np.array([-10, 35, 0]),
     "world" : CarWorld,
     'render' : True,
     'x0': np.array([0, 5, 0, 0, 0, 0]),
@@ -75,7 +75,7 @@ algorithm['init_traj_distr'] = {
 
 action_cost = {
     'type': CostAction,
-    'wu': np.array([5e-5, 5e-5])
+    'wu': np.array([5e-5, 5e-4])
 }
 
 state_cost = {
@@ -112,8 +112,8 @@ algorithm['traj_opt'] = {
 algorithm['policy_opt'] = {}
 
 config = {
-    'iterations': 10,
-    'num_samples': 5,
+    'iterations': 20,
+    'num_samples': 10,
     'common': common,
     'verbose_trials': 0,
     'agent': agent,
